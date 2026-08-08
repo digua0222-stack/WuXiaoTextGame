@@ -110,3 +110,104 @@ npm run server          # 启动后端 http://localhost:3000
 - **数据驱动运营**：剧情/武功/掉落放数据库，改配置无需发版；
   配版本号 + `StorySource.clearCache()` 即可热更新
 - **多玩法接口**：排行榜、邮件、商城等按 `/api/*` 路由扩展
+
+## 8. 异步请求机制：挂起与唤醒
+
+`this.request<T>("get", path, null, timeout)` 是"挂起 + 唤醒"式异步调用。
+**挂起的不是线程**——JS 是单线程事件循环模型，真正等网络的是浏览器内核的
+异步 I/O；数据回来时通过 **事件 + 回调** 把执行权"唤醒"回来。
+
+### 8.1 完整链路
+
+**第 1 步：发起请求，立刻返回（不阻塞）**
+
+`request<T>()` 创建 Promise，内部 new 一个 `Laya.HttpRequest` 并调用 `send()`。
+引擎 `send()` 的关键点（`engine/.../laya.core.js`）：
+
+```js
+http.open(method, url, true);            // true = 异步模式，send() 立即返回
+http.onload   = e => this._onLoad(e);    // 注册 onload 回调
+http.send(data);                         // 发出请求后立即返回，不阻塞
+```
+
+`open(..., true)` 的 `true` 是**异步标志**——`send()` 立即返回，JS 线程继续跑
+下面的代码，**不阻塞**。真正的网络收发在浏览器内核的 I/O 线程进行。
+
+此时 Promise 处于 `pending` 状态，`resolve`/`reject` 保存在闭包里等待将来被调用
+——这就是"挂起"。
+
+**第 2 步：数据回来，引擎派发事件**
+
+```js
+_onLoad(e) {
+    var status = this._http.status;
+    if (status === 200 || status === 204 || status === 0) {
+        this.complete();                  // 成功 → 解析数据
+    } else {
+        this.error(...);                  // 非 2xx → 触发 ERROR
+    }
+}
+complete() {
+    if (this._responseType === "json") {
+        this._data = JSON.parse(this._http.responseText);  // "json" 自动解析
+    }
+    this.event(Event.COMPLETE, this._data);  // 派发 COMPLETE 事件，携带数据
+}
+```
+
+**第 3 步：回调被唤醒**
+
+`ApiClient` 中注册的监听是"唤醒开关"：
+
+```ts
+http.once(Laya.Event.COMPLETE, this, (res: unknown) => {
+    settled = true;
+    clearTimeout(timer);
+    resolve(res as T);        // 唤醒：Promise 从 pending 变 fulfilled
+});
+```
+
+`resolve(res)` **不会同步执行**后续代码，而是把 `.then()` 回调放进**微任务队列**，
+当前任务执行完后由事件循环取出执行。
+
+**第 4 步：调用方继续**
+
+```ts
+StorySource.get(nodeId).then((node) => { ... showChoices(node) });
+```
+
+Promise 变为 fulfilled 后 `.then` 回调执行——调用方的代码"从挂起处被唤醒"，
+拿到 `node` 继续渲染界面。
+
+### 8.2 时序图
+
+```
+调用方                  request()               HttpRequest(XHR)        浏览器内核
+  │                        │                        │                      │
+  ├─ 创建 Promise ─────────►   send() ──────────────►  open(true)+send() ──► 网络收发
+  │                        │                        │                      │  (后台进行)
+  ├─ 继续执行其他代码 ◄─────┘ (立即返回,不阻塞)        │                      │
+  │   ...空闲...                                    │                      │
+  │                        │                      ◄──── onload 触发 ────────┤
+  │                        │                _onLoad → complete()            │
+  │                        │                JSON.parse + 派发 COMPLETE       │
+  │                        │                        │                      │
+  │  resolve(data) ◄───────┼─── once 回调被调用 ─────┤                      │
+  │                        │                        │                      │
+  ├─ .then 回调入微任务队列 │                        │                      │
+  ├─ 事件循环取出微任务 ────► showChoices(node)       │                      │
+```
+
+### 8.3 三个关键认知
+
+1. **"挂起"只是 Promise 停在 pending**：调用方函数早已返回，`request()` 之后的
+   代码立即执行，不受网络影响。没有线程阻塞，不会卡死 UI。
+2. **"唤醒"是事件 + 微任务**：网络数据到达 → `onload` → 引擎派发 COMPLETE →
+   回调 `resolve()` → Promise 状态变更 → `.then()` 入微任务队列 → 事件循环执行。
+   整条链都是**回调驱动**，JS 主线程全程没有被"占住"。
+3. **超时兜底**：`ApiClient` 内置 8s `setTimeout`，未 `resolve`/`reject` 则手动
+   `reject(new Error("请求超时"))`，防止网络卡死时 Promise 永远 pending。
+
+补充：引擎 `HttpRequest` 内部复用同一个 `XMLHttpRequest` 实例，但每个 `request()`
+调用都会 new 新的 `HttpRequest`，因此并发请求互不干扰——多个剧情节点可同时加载，
+各自独立"挂起/唤醒"。
