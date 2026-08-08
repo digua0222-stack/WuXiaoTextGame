@@ -10,6 +10,9 @@ async function main() {
     Laya.stage.alignV = Laya.Stage.ALIGN_MIDDLE;
     // 启动游戏
     new WuXia.Game();
+    // 启用后端通信模式（默认离线，仅读本地 GameData）
+    // 放开下面一行即可改为：剧情数据从服务器 /api/story/:id 拉取，失败自动回退本地
+    // WuXia.ApiClient.baseUrl = "http://localhost:3000/api";
 }
 main();
 var WuXia;
@@ -614,6 +617,107 @@ var WuXia;
 })(WuXia || (WuXia = {}));
 var WuXia;
 (function (WuXia) {
+    /**
+     * 网络通信层：基于 Laya.HttpRequest 的 Promise 封装
+     * - baseUrl 为空串 = 纯离线模式（只读本地 GameData）
+     * - baseUrl 赋值后 = 后端通信模式（远程数据优先，失败回退本地）
+     */
+    class ApiClient {
+        static get online() {
+            return this.baseUrl.length > 0;
+        }
+        /** GET 请求，responseType="json" 时自动解析为对象 */
+        static get(path, timeout = 8000) {
+            return this.request("get", path, null, timeout);
+        }
+        /** POST 请求，body 自动 JSON 序列化 */
+        static post(path, data, timeout = 8000) {
+            return this.request("post", path, data, timeout);
+        }
+        static request(method, path, data, timeout) {
+            return new Promise((resolve, reject) => {
+                const http = new Laya.HttpRequest();
+                let settled = false;
+                const timer = setTimeout(() => {
+                    if (!settled) {
+                        settled = true;
+                        reject(new Error(`请求超时: ${path}`));
+                    }
+                }, timeout);
+                http.once(Laya.Event.COMPLETE, this, (res) => {
+                    if (settled)
+                        return;
+                    settled = true;
+                    clearTimeout(timer);
+                    resolve(res);
+                });
+                http.once(Laya.Event.ERROR, this, (msg) => {
+                    if (settled)
+                        return;
+                    settled = true;
+                    clearTimeout(timer);
+                    reject(new Error(String(msg) || `请求失败: ${path}`));
+                });
+                const body = data != null ? JSON.stringify(data) : null;
+                http.send(this.baseUrl + path, body, method, "json", ["Content-Type", "application/json"]);
+            });
+        }
+    }
+    /** 后端地址，例如 "http://localhost:3000/api"。留空表示离线 */
+    ApiClient.baseUrl = "";
+    WuXia.ApiClient = ApiClient;
+})(WuXia || (WuXia = {}));
+var WuXia;
+(function (WuXia) {
+    /**
+     * 剧情数据源：远程优先，本地兜底，带内存缓存
+     * - 后端开启时：GET /api/story/:id 拉取节点 JSON
+     * - 后端失败/离线时：回退 GameData 本地静态数据
+     * 类型契约：远端返回的 JSON 必须符合 StoryNode 结构
+     */
+    class StorySource {
+        /** 获取剧情节点（并发去重） */
+        static get(id) {
+            if (this.cache[id])
+                return Promise.resolve(this.cache[id]);
+            if (this.loading[id])
+                return this.loading[id];
+            const p = WuXia.ApiClient.online
+                ? this.fromRemote(id)
+                : Promise.resolve(this.fromLocal(id));
+            this.loading[id] = p;
+            // target=ES2017，用 then 做清理而非 finally
+            p.then(() => { delete this.loading[id]; }, () => { delete this.loading[id]; });
+            return p;
+        }
+        static fromRemote(id) {
+            return WuXia.ApiClient.get("/api/story/" + encodeURIComponent(id))
+                .then((node) => {
+                this.cache[id] = node;
+                return node;
+            })
+                .catch((err) => {
+                console.warn("[StorySource] 远端剧情拉取失败，回退本地:", id, err);
+                return this.fromLocal(id);
+            });
+        }
+        static fromLocal(id) {
+            const node = WuXia.GameData.getStory(id) || null;
+            if (node)
+                this.cache[id] = node;
+            return node;
+        }
+        /** 清空缓存（切换账号/刷新远端版本时调用） */
+        static clearCache() {
+            this.cache = {};
+        }
+    }
+    StorySource.cache = {};
+    StorySource.loading = {};
+    WuXia.StorySource = StorySource;
+})(WuXia || (WuXia = {}));
+var WuXia;
+(function (WuXia) {
     /** 战斗中的敌人实例 */
     class BattleEnemy {
         constructor(data, levelScale) {
@@ -987,22 +1091,23 @@ var WuXia;
             this.ui = ui;
             this.battle = battle;
         }
-        /** 进入剧情节点 */
+        /** 进入剧情节点（异步加载：远程优先，本地兜底） */
         enter(nodeId) {
-            const node = WuXia.GameData.getStory(nodeId);
-            if (!node) {
-                this.ui.log(`[错误] 剧情节点不存在：${nodeId}`, "#ff5555");
-                return;
-            }
-            this.hero.currentNode = nodeId;
-            this.ui.log("────────────────────────", "#6a6a6a");
-            this.ui.log(node.text, "#e8e0cc");
-            this.applyEffects(node.effect || []);
-            if (this.pendingNode) {
-                // 战斗效果已挂起，等待战斗结束
-                return;
-            }
-            this.showChoices(node);
+            WuXia.StorySource.get(nodeId).then((node) => {
+                if (!node) {
+                    this.ui.log(`[错误] 剧情节点不存在：${nodeId}`, "#ff5555");
+                    return;
+                }
+                this.hero.currentNode = nodeId;
+                this.ui.log("────────────────────────", "#6a6a6a");
+                this.ui.log(node.text, "#e8e0cc");
+                this.applyEffects(node.effect || []);
+                if (this.pendingNode) {
+                    // 战斗效果已挂起，等待战斗结束
+                    return;
+                }
+                this.showChoices(node);
+            });
         }
         /** 显示节点选项（过滤不满足条件的） */
         showChoices(node) {

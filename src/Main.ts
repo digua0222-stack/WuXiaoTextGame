@@ -11,6 +11,10 @@ async function main(): Promise<void> {
 
     // 启动游戏
     new WuXia.Game();
+
+    // 启用后端通信模式（默认离线，仅读本地 GameData）
+    // 放开下面一行即可改为：剧情数据从服务器 /api/story/:id 拉取，失败自动回退本地
+    // WuXia.ApiClient.baseUrl = "http://localhost:3000/api";
 }
 
 main();

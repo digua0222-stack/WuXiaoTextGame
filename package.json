@@ -6,9 +6,19 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
-    "start": "npx --yes serve -l 8000 ."
+    "start": "npx --yes serve -l 8000 .",
+    "package": "node tools/package.js",
+    "apk:sync": "npm run package && npx cap sync android",
+    "apk:build": "cd android && gradlew.bat assembleDebug",
+    "apk:open": "npx cap open android",
+    "server": "node server/server.js"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.0",
     "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/core": "^8.5.0"
   }
 }

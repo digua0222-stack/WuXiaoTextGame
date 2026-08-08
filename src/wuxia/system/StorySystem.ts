@@ -12,22 +12,23 @@ namespace WuXia {
             this.battle = battle;
         }
 
-        /** 进入剧情节点 */
+        /** 进入剧情节点（异步加载：远程优先，本地兜底） */
         enter(nodeId: string): void {
-            const node = GameData.getStory(nodeId);
-            if (!node) {
-                this.ui.log(`[错误] 剧情节点不存在：${nodeId}`, "#ff5555");
-                return;
-            }
-            this.hero.currentNode = nodeId;
-            this.ui.log("────────────────────────", "#6a6a6a");
-            this.ui.log(node.text, "#e8e0cc");
-            this.applyEffects(node.effect || []);
-            if (this.pendingNode) {
-                // 战斗效果已挂起，等待战斗结束
-                return;
-            }
-            this.showChoices(node);
+            StorySource.get(nodeId).then((node) => {
+                if (!node) {
+                    this.ui.log(`[错误] 剧情节点不存在：${nodeId}`, "#ff5555");
+                    return;
+                }
+                this.hero.currentNode = nodeId;
+                this.ui.log("────────────────────────", "#6a6a6a");
+                this.ui.log(node.text, "#e8e0cc");
+                this.applyEffects(node.effect || []);
+                if (this.pendingNode) {
+                    // 战斗效果已挂起，等待战斗结束
+                    return;
+                }
+                this.showChoices(node);
+            });
         }
 
         /** 显示节点选项（过滤不满足条件的） */

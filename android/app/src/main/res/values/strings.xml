@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">姝︿緺鏂囧瓧娓告垙</string>
+    <string name="title_activity_main">姝︿緺鏂囧瓧娓告垙</string>
+    <string name="package_name">com.wuxia.textgame</string>
+    <string name="custom_url_scheme">com.wuxia.textgame</string>
+</resources>
