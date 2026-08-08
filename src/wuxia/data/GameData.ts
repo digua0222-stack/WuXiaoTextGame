@@ -1,4 +1,5 @@
-namespace WuXia {
+import type { EnemyData, ItemData, SkillData, StoryNode } from "../model/Hero";
+
     /** 静态配置数据：物品 / 武功 / 敌人 / 剧情 */
     export class GameData {
         static items: { [id: string]: ItemData } = {
@@ -236,4 +237,3 @@ namespace WuXia {
             return GameData.stories[id];
         }
     }
-}

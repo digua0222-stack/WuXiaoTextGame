@@ -1,4 +1,6 @@
-namespace WuXia {
+import { GrowthSystem } from "../system/GrowthSystem";
+import type { Hero, IGameUI } from "../model/Hero";
+
     /** 界面层：标题栏 / 日志区 / 选项按钮 / 输入框 */
     export class GameUI implements IGameUI {
         private static readonly LOG_W = 920;
@@ -239,4 +241,3 @@ namespace WuXia {
             this.logView.mask = null;
         }
     }
-}

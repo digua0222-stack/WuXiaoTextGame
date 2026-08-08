@@ -1,4 +1,7 @@
-namespace WuXia {
+import { GameData } from "../data/GameData";
+import { GrowthSystem } from "./GrowthSystem";
+import type { EnemyData, Hero, IGameUI, SkillData } from "../model/Hero";
+
     /** 战斗中的敌人实例 */
     class BattleEnemy {
         data: EnemyData;
@@ -249,4 +252,3 @@ namespace WuXia {
             return true;
         }
     }
-}

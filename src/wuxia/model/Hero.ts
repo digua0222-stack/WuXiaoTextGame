@@ -1,4 +1,3 @@
-namespace WuXia {
     /** 基础四维属性 */
     export interface HeroAttributes {
         /** 膂力：影响攻击 */
@@ -194,4 +193,3 @@ namespace WuXia {
             return h;
         }
     }
-}

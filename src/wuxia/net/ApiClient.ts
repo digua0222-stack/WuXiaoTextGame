@@ -1,4 +1,3 @@
-namespace WuXia {
     /**
      * 网络通信层：基于 Laya.HttpRequest 的 Promise 封装
      * - baseUrl 为空串 = 纯离线模式（只读本地 GameData）
@@ -64,4 +63,3 @@ namespace WuXia {
             });
         }
     }
-}

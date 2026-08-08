@@ -2,3 +2,14 @@ node_modules/
 dist/
 engine/
 *.log
+
+# IDE 编译产物（不要提交）
+bin/js/bundles
+bin/js/modules
+
+# LayaAir IDE 缓存（不要提交）
+library/
+local/
+
+# macOS
+.DS_Store

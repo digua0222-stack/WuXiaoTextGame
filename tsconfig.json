@@ -1,8 +1,9 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "module": "none",
-    "outFile": "bin/js/bundle.js",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "outDir": "bin/js/modules",
     "sourceMap": true,
     "strict": false,
     "skipLibCheck": true,

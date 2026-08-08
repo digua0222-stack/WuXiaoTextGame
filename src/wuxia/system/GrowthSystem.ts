@@ -1,4 +1,6 @@
-namespace WuXia {
+import { GameData } from "../data/GameData";
+import type { Hero, HeroAttributes } from "../model/Hero";
+
     /** 属性养成框架：升级 / 加点 / 派生属性 / 修炼 */
     export class GrowthSystem {
         /** 升级所需经验 = 等级 * 等级 * 80 + 60 */
@@ -104,4 +106,3 @@ namespace WuXia {
             return `你盘膝打坐，调息片刻。气血 +${Math.round(gain)}，内力 +${Math.round(gain * 0.8)}。`;
         }
     }
-}

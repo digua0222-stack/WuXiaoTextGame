@@ -1,4 +1,11 @@
-namespace WuXia {
+import { GameData } from "../data/GameData";
+import { SaveManager } from "../data/SaveManager";
+import { BattleSystem } from "../system/BattleSystem";
+import { GrowthSystem } from "../system/GrowthSystem";
+import { StorySystem } from "../system/StorySystem";
+import { GameUI } from "../ui/GameUI";
+import { Hero, type HeroAttributes } from "../model/Hero";
+
     /** 游戏总控制器：串联 UI / 主角 / 剧情 / 战斗 / 养成 */
     export class Game {
         private hero!: Hero;
@@ -235,4 +242,3 @@ namespace WuXia {
             }, 1 + (this.hero.level - 1) * 0.15);
         }
     }
-}

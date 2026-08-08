@@ -1,4 +1,9 @@
-namespace WuXia {
+import { BattleSystem } from "./BattleSystem";
+import { GameData } from "../data/GameData";
+import { GrowthSystem } from "./GrowthSystem";
+import { StorySource } from "../net/StorySource";
+import type { Hero, HeroAttributes, IGameUI, StoryChoice, StoryCondition, StoryEffect, StoryNode } from "../model/Hero";
+
     /** 节点式剧情框架：条件判定 / 效果应用 / 战斗挂起 */
     export class StorySystem {
         private hero: Hero;
@@ -174,4 +179,3 @@ namespace WuXia {
             return { ok: true, reason: "" };
         }
     }
-}

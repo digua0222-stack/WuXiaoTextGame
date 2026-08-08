@@ -1,4 +1,5 @@
-namespace WuXia {
+import { Hero } from "../model/Hero";
+
     /** 存档管理：localStorage 持久化 */
     export class SaveManager {
         static readonly SAVE_KEY = "wuxia_save_v1";
@@ -35,4 +36,3 @@ namespace WuXia {
             return !!localStorage.getItem(SaveManager.SAVE_KEY);
         }
     }
-}

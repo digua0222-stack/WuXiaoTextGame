@@ -1,4 +1,7 @@
-namespace WuXia {
+import { GameData } from "../data/GameData";
+import { ApiClient } from "./ApiClient";
+import type { StoryNode } from "../model/Hero";
+
     /**
      * 剧情数据源：远程优先，本地兜底，带内存缓存
      * - 后端开启时：GET /api/story/:id 拉取节点 JSON
@@ -47,4 +50,3 @@ namespace WuXia {
             this.cache = {};
         }
     }
-}
