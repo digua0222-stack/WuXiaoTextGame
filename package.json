@@ -1,0 +1,14 @@
+{
+  "name": "wuxia-text-game",
+  "version": "0.1.0",
+  "private": true,
+  "description": "武侠文字游戏 (LayaAir 3.x)",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "start": "npx --yes serve -l 8000 ."
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}
